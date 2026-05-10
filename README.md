@@ -42,9 +42,9 @@ GET /api/primes?upTo=100&algorithm=auto
 
 ## Validation and Error Handling
 
-- Invalid 'upTo' (e.g. 0, negative) returns '400 Bad Request'
-- Unsupported 'algorithm' returns 400 Bad Request
-- Very large values above the configured full-list cap return 400 Bad Request
+- Invalid `upTo` (e.g. 0, negative) returns `400 Bad Request`
+- Unsupported `algorithm` returns `400 Bad Request`
+- Values above 200,000 exceed the full-list cap and return `400 Bad Request`
 - Error responses are handled centrally using GlobalExceptionHandler and returned in a standard ApiError format.
 
 ## Cache Behaviour
@@ -96,3 +96,38 @@ Try it out:
 
 - https://prime-api-6g66.onrender.com/api/primes?upTo=30&algorithm=auto
 - https://prime-api-6g66.onrender.com/swagger-ui.html
+
+## Run Locally
+
+1. Clone the repository
+2. Build the project:
+
+```bash
+./mvnw clean package
+```
+
+3. Run the JAR:
+
+```bash
+java -jar target/prime-api-0.0.1-SNAPSHOT.jar
+```
+
+4. Open:
+  - API: `http://localhost:8080/api/primes?upTo=100&algorithm=auto`
+  - Swagger UI: `http://localhost:8080/swagger-ui.html`
+
+### Alternative — dev mode
+
+Run directly without building a JAR first:
+
+```bash
+./mvnw spring-boot:run
+```
+
+### Verify response format
+
+```bash
+curl -i "http://localhost:8080/api/primes?upTo=30&algorithm=auto"
+curl -i -H "Accept: application/json" "http://localhost:8080/api/primes?upTo=30&algorithm=auto"
+curl -i -H "Accept: application/xml" "http://localhost:8080/api/primes?upTo=30&algorithm=auto"
+```
