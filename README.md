@@ -1,6 +1,17 @@
-'# prime-api
+# prime-api
 
 A Spring Boot REST API that computes prime numbers up to a requested upper bound, with algorithm selection, intelligent caching, and content negotiation for JSON and XML responses.
+
+## Tech Stack
+
+- **Java 21** / Spring Boot 4.0.6
+- **Maven** (Maven Wrapper)
+- **Lombok** — reduces boilerplate
+- **Jackson** — JSON (default) and XML via `jackson-dataformat-xml`
+- **SpringDoc OpenAPI 3** — Swagger UI at `/swagger-ui.html`
+- **JUnit 5** — unit tests
+- **Karate 1.4.1** — integration tests
+- **Docker** — containerised for Render deployment
 
 ## Features
 
@@ -22,6 +33,7 @@ A Spring Boot REST API that computes prime numbers up to a requested upper bound
 ```http
 GET /api/primes?upTo=100&algorithm=auto
 ```
+
 ## Query Parameters
 
 - upTo (required): positive integer upper bound
@@ -49,26 +61,38 @@ If no cache is usable, response source is COMPUTED.
 - Very large prime lists can be expensive to render in browser-based tools (especially Swagger UI), even when backend computation succeeds.
 - A full-list upper limit is used to keep responses practical and stable for this project scope.
 
-## With more time, I would add:
+## Future Improvements
 
 - a summary-only endpoint for very large inputs (count + metadata, no full list)
 - bounded cache with TTL (e.g. Caffeine)
 - optional distributed cache (e.g. Redis)
 
-## Testing Summary
+## Testing
 
-Current test coverage includes:
+This project includes:
 
-- algorithm correctness and auto-resolution thresholds
-- cache-source behaviour (CACHED_EXACT, CACHED_FILTERED, CACHED_EXTENDED)
-- invalid input handling
-- max-limit validation (ResponseStatusException path)
+- **Unit tests (JUnit 5)** for core prime logic, algorithm selection, cache behavior, and validation paths.
+- **Integration tests (Karate)** for API endpoint behavior and error responses.
 
-Note: Rest Assured controller-level testing was paused due to runtime compatibility issues in this setup (Spring Boot 4 + Java 21). Service-level tests and manual endpoint verification were used to confirm behaviour.
+Run all tests with:
+
+```bash
+./mvnw test
+```
+
+Karate HTML report is generated at target/karate-reports/karate-summary.html
+
+**Test coverage includes:**
+
+- Algorithm correctness and auto-resolution thresholds
+- Cache-source behaviour (CACHED_EXACT, CACHED_FILTERED, CACHED_EXTENDED)
+- Invalid input handling
+- Max-limit validation (ResponseStatusException path)
+
 
 ## Live Demo
 
 Try it out:
 
 - https://prime-api-6g66.onrender.com/api/primes?upTo=30&algorithm=auto
-- https://prime-api-6g66.onrender.com/swagger-ui.html'
+- https://prime-api-6g66.onrender.com/swagger-ui.html

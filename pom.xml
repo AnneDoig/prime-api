@@ -56,24 +56,18 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Spring Boot test starter (JUnit 5, Mockito, MockMvc) -->
+        <!-- Spring Boot test starter (JUnit 5, Mockito, MockMvc, AssertJ, etc.) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
 
-        <!-- REST Assured for integration testing REST endpoints (including OpenAPI docs endpoints) -->
+        <!-- Karate integration tests (assessment requirement: RestAssured or Karate) -->
         <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
-            <version>5.5.1</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <groupId>com.intuit.karate</groupId>
+            <artifactId>karate-junit5</artifactId>
+            <version>1.4.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

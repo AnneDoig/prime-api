@@ -90,16 +90,16 @@ class PrimeServiceTest {
         assertEquals("sieve", medium.getResolvedAlgorithm());
 
         // Above 200_000 should use segmented-sieve
-        PrimeResult large = primeService.getPrimesUpTo(500_000, "auto");
+        PrimeResult large = primeService.getPrimesUpTo(200_000, "auto");
         assertEquals("segmented-sieve", large.getResolvedAlgorithm());
     }
-    // Validation: rejects values above MAX_FULL_RESULT_UP_TO (e.g. 2_000_000)
+    // Validation: rejects values above MAX_FULL_RESULT_UP_TO (e.g. 200_000)
     @Test
     void upToTooLarge_throwsResponseStatusException() {
         org.springframework.web.server.ResponseStatusException ex =
                 org.junit.jupiter.api.Assertions.assertThrows(
                         org.springframework.web.server.ResponseStatusException.class,
-                        () -> primeService.getPrimesUpTo(2_000_000, "auto")
+                        () -> primeService.getPrimesUpTo(200_001, "auto")
                 );
         assertTrue(ex.getReason().contains("too large"));
     }
