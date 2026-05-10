@@ -63,9 +63,15 @@ If no cache is usable, response source is COMPUTED.
 
 ## Future Improvements
 
-- a summary-only endpoint for very large inputs (count + metadata, no full list)
-- bounded cache with TTL (e.g. Caffeine)
-- optional distributed cache (e.g. Redis)
+- **Summary endpoint** — `/api/primes/summary?upTo=N` returning count + metadata only, making very large inputs practical without serialization overhead.
+
+- **Bounded in-memory cache (Caffeine)** — adds automatic eviction, TTL expiry, and size limits, allowing the 200,000 upper limit to be raised safely.
+
+- **Persistent cache (PostgreSQL)** — storing summary results across restarts; full prime list storage ruled out as segmented sieve computation is fast enough that DB I/O overhead would likely cost more than it saves.
+
+- **Redis distributed cache** — for horizontally scaled deployments needing shared cache state across multiple instances.
+
+- **Request audit logging** — persist request history (upTo, algorithm, source, timestamp) for analytics and observability.
 
 ## Testing
 
