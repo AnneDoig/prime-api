@@ -11,16 +11,19 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+// REST controller for prime-number endpoints.
 @RestController
 @RequestMapping("/api")
 public class PrimeController {
 
+    // Business logic lives in the service layer; the controller handles HTTP concerns only.
     private final PrimeService primeService;
 
     public PrimeController(PrimeService primeService) {
         this.primeService = primeService;
     }
 
+    // Returns a paginated prime list and supports both JSON and XML responses.
     @GetMapping(value = "/primes", produces = {
             MediaType.APPLICATION_JSON_VALUE,
             MediaType.APPLICATION_XML_VALUE
@@ -46,18 +49,22 @@ public class PrimeController {
             }
     )
     public ResponseEntity<PrimeResult> getPrimes(
+            // Upper bound for prime calculation.
             @RequestParam
             @Schema(example = "100", description = "Must be a positive integer")
             int upTo,
 
+            // Requested algorithm, or auto-selection based on input size.
             @RequestParam(defaultValue = "auto")
             @Schema(allowableValues = {"auto", "trial", "sieve", "segmented-sieve"})
             String algorithm,
 
+            // 1-based page number for the paginated response.
             @RequestParam(defaultValue = "1")
             @Schema(example = "1", description = "Page number (1-based). See response field maxPageNumber for the highest valid value.")
             int page,
 
+            // Number of primes to return in the current page.
             @RequestParam(defaultValue = "100")
             @Schema(example = "100", description = "Page size (1..1000)")
             int size

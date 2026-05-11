@@ -17,12 +17,15 @@ import java.util.List;
 @Schema(description = "Prime number computation result with cache and pagination metadata")
 public class PrimeResult {
 
+    // Original request upper bound.
     @Schema(example = "200", description = "Requested upper bound")
     private int upTo;
 
+    // Cache/source metadata showing whether the result was computed or reused.
     @Schema(example = "CACHED_EXTENDED (from 100000)", description = "Where the response data came from")
     private String source;
 
+    // Algorithm metadata showing what was requested and what was actually used.
     @Schema(example = "auto", description = "Algorithm requested by the caller")
     private String requestedAlgorithm;
 
@@ -32,6 +35,7 @@ public class PrimeResult {
     @Schema(example = "auto/sieve", description = "Requested/resolved algorithm display")
     private String algorithmDisplay;
 
+    // Pagination summary for the full result set and the current page.
     @Schema(example = "46", description = "Total number of primes found before pagination")
     private int primeCount;
 
@@ -53,6 +57,7 @@ public class PrimeResult {
     @Schema(example = "false", description = "Whether there is another page after this one")
     private boolean hasNext;
 
+    // Only the primes for the requested page are returned here.
     @JacksonXmlElementWrapper(useWrapping = false)
     @JacksonXmlProperty(localName = "primes")
     @Schema(description = "Prime numbers for the current page")
