@@ -1,10 +1,14 @@
 package com.doig.primeapi.service;
 
 import com.doig.primeapi.model.PrimeResult;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
 import java.util.*;
 
 @Service
@@ -18,12 +22,23 @@ public class PrimeService {
     private static final int AUTO_SIEVE_THRESHOLD = 10_000;
     private static final int AUTO_SEGMENTED_SIEVE_THRESHOLD = 200_000;
 
-    private static final int MAX_FULL_RESULT_UP_TO = 200_000;
     private static final int DEFAULT_PAGE = 1;
     private static final int DEFAULT_SIZE = 100;
     private static final int MAX_SIZE = 1000;
 
-    private final Map<String, TreeMap<Integer, List<Integer>>> cacheByAlgorithm = new HashMap<>();
+    // Configurable max upTo for full-list responses; guards memory/serialization cost.
+    @Value("${prime.max-full-result-up-to:200000}")
+    private int maxFullResultUpTo = 200_000;
+
+    // Approximate total weight per algorithm cache (uses list size as entry weight).
+    @Value("${prime.cache.max-weight:1000000}")
+    private long cacheMaxWeight = 1_000_000L;
+
+    // How long an entry can stay idle in cache before eviction.
+    @Value("${prime.cache.ttl:30m}")
+    private Duration cacheTtl = Duration.ofMinutes(30);
+
+    private final Map<String, Cache<Integer, List<Integer>>> cacheByAlgorithm = new HashMap<>();
 
     public synchronized PrimeResult getPrimesUpTo(int n) {
         return getPrimesUpTo(n, ALGO_AUTO, DEFAULT_PAGE, DEFAULT_SIZE);
@@ -43,40 +58,53 @@ public class PrimeService {
                 ? ALGO_AUTO + "/" + resolvedAlgorithm
                 : requestedAlgorithm;
 
-        TreeMap<Integer, List<Integer>> cache =
-                cacheByAlgorithm.computeIfAbsent(resolvedAlgorithm, ignored -> new TreeMap<>());
+        Cache<Integer, List<Integer>> cache =
+                cacheByAlgorithm.computeIfAbsent(resolvedAlgorithm, ignored -> createPrimeCache());
 
         List<Integer> fullResult;
         String source;
 
         // Exact hit
-        if (cache.containsKey(n)) {
-            fullResult = cache.get(n);
+        List<Integer> exactHit = cache.getIfPresent(n);
+        if (exactHit != null) {
+            fullResult = exactHit;
             source = "CACHED_EXACT";
         } else {
             // Reuse larger cached list by filtering down
-            Integer ceiling = cache.ceilingKey(n);
+            NavigableSet<Integer> cachedSizes = new TreeSet<>(cache.asMap().keySet());
+            Integer ceiling = cachedSizes.ceiling(n);
             if (ceiling != null) {
-                fullResult = cache.get(ceiling).stream()
-                        .filter(p -> p <= n)
-                        .toList();
-                cache.put(n, fullResult);
-                source = "CACHED_FILTERED (from " + ceiling + ")";
+                List<Integer> ceilingResult = cache.getIfPresent(ceiling);
+                if (ceilingResult != null) {
+                    fullResult = ceilingResult.stream()
+                            .filter(p -> p <= n)
+                            .toList();
+                    cache.put(n, fullResult);
+                    source = "CACHED_FILTERED (from " + ceiling + ")";
+                } else {
+                    fullResult = computeAndCache(n, resolvedAlgorithm, cache);
+                    source = "COMPUTED";
+                }
             } else {
                 // Reuse smaller cached list and extend
-                Integer floor = cache.floorKey(n);
+                Integer floor = cachedSizes.floor(n);
                 if (floor != null) {
-                    fullResult = new ArrayList<>(cache.get(floor));
-                    for (int i = floor + 1; i <= n; i++) {
-                        if (isPrime(i)) {
-                            fullResult.add(i);
+                    List<Integer> floorResult = cache.getIfPresent(floor);
+                    if (floorResult != null) {
+                        fullResult = new ArrayList<>(floorResult);
+                        for (int i = floor + 1; i <= n; i++) {
+                            if (isPrime(i)) {
+                                fullResult.add(i);
+                            }
                         }
+                        cache.put(n, fullResult);
+                        source = "CACHED_EXTENDED (from " + floor + ")";
+                    } else {
+                        fullResult = computeAndCache(n, resolvedAlgorithm, cache);
+                        source = "COMPUTED";
                     }
-                    cache.put(n, fullResult);
-                    source = "CACHED_EXTENDED (from " + floor + ")";
                 } else {
-                    fullResult = computePrimes(n, resolvedAlgorithm);
-                    cache.put(n, fullResult);
+                    fullResult = computeAndCache(n, resolvedAlgorithm, cache);
                     source = "COMPUTED";
                 }
             }
@@ -125,10 +153,10 @@ public class PrimeService {
         if (n <= 0) {
             throw new IllegalArgumentException("upTo must be a positive integer");
         }
-        if (n > MAX_FULL_RESULT_UP_TO) {
+        if (n > maxFullResultUpTo) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "upTo number is too large for a full prime list response. Enter a value of 200_000 or less"
+                    "upTo number is too large for a full prime list response. Enter a value of " + maxFullResultUpTo + " or less"
             );
         }
     }
@@ -140,6 +168,20 @@ public class PrimeService {
         if (size <= 0 || size > MAX_SIZE) {
             throw new IllegalArgumentException("Size must be between 1 and " + MAX_SIZE);
         }
+    }
+
+    private Cache<Integer, List<Integer>> createPrimeCache() {
+        return Caffeine.newBuilder()
+                .maximumWeight(cacheMaxWeight)
+                .weigher((Integer key, List<Integer> value) -> Math.max(1, value.size()))
+                .expireAfterAccess(cacheTtl)
+                .build();
+    }
+
+    private List<Integer> computeAndCache(int n, String resolvedAlgorithm, Cache<Integer, List<Integer>> cache) {
+        List<Integer> result = computePrimes(n, resolvedAlgorithm);
+        cache.put(n, result);
+        return result;
     }
 
     private String resolveAlgorithm(String requestedAlgorithm, int n) {

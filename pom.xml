@@ -49,6 +49,13 @@
             <artifactId>jackson-dataformat-xml</artifactId>
         </dependency>
 
+        <!-- Caffeine in-memory cache -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>3.2.0</version>
+        </dependency>
+
         <!-- Lombok reduce coding e.g. Getter/Setters/constructors-->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -68,6 +75,14 @@
             <groupId>com.intuit.karate</groupId>
             <artifactId>karate-junit5</artifactId>
             <version>1.4.1</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Override Karate's transitive Armeria to a newer patched version -->
+        <dependency>
+            <groupId>com.linecorp.armeria</groupId>
+            <artifactId>armeria</artifactId>
+            <version>1.38.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

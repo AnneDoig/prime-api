@@ -184,3 +184,22 @@ curl -i "http://localhost:8080/api/primes?upTo=30&algorithm=auto"
 curl -i -H "Accept: application/json" "http://localhost:8080/api/primes?upTo=30&algorithm=auto"
 curl -i -H "Accept: application/xml" "http://localhost:8080/api/primes?upTo=30&algorithm=auto"
 ```
+
+## Experiment Results — Caffeine Cache
+
+On the `experiment-caffeine` branch, the in-memory cache was replaced with a bounded Caffeine cache while preserving the existing intelligent cache behaviour (`CACHED_EXACT`, `CACHED_FILTERED`, `CACHED_EXTENDED`).
+
+### Outcome
+- Pagination remained stable for large requests.
+- A request up to `2,999,993` resolved correctly to `segmented-sieve`.
+- First request returned `COMPUTED`.
+- Repeating the same request returned `CACHED_EXACT`.
+- Response metadata remained correct:
+  - `primeCount = 216815`
+  - `pagePrimeCount = 100`
+  - `totalPages = 2169`
+  - `maxPageNumber = 2169`
+
+### Conclusion
+This showed that a bounded, configurable cache can support larger prime ranges safely while keeping response payloads manageable through pagination. 
+It also provided a cleaner path to increasing the configurable upper limit beyond the original fixed cap.
