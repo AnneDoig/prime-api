@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
@@ -39,6 +40,21 @@ public class GlobalExceptionHandler {
         String message = ex.getReason() != null ? ex.getReason() : "Request failed";
         return buildError(status, message, request.getRequestURI());
     }
+
+    // Handles query parameter type conversion failures (e.g. upTo=abc for an int parameter).
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex,
+            HttpServletRequest request
+    ) {
+        String parameter = ex.getName();
+        String expectedType = ex.getRequiredType() != null
+                ? ex.getRequiredType().getSimpleName()
+                : "required type";
+        String message = "Invalid value for parameter '" + parameter + "'. Expected " + expectedType + ".";
+        return buildError(HttpStatus.BAD_REQUEST, message, request.getRequestURI());
+    }
+
     // Builds the shared response shape used for all handled errors.
     private ResponseEntity<Map<String, Object>> buildError(
             HttpStatus status,

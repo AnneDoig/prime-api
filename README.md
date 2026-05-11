@@ -36,16 +36,63 @@ GET /api/primes?upTo=100&algorithm=auto
 
 ## Query Parameters
 
-- upTo (required): positive integer upper bound
-- algorithm (optional): auto, trial, sieve, segmented-sieve
-- default = auto
+- `upTo` (required): positive integer upper bound
+- `algorithm` (optional): `auto`, `trial`, `sieve`, `segmented-sieve`
+- default = `auto`
+
+## Pagination Notes
+
+- `page` is 1-based (`page=1` is the first page).
+- `totalPages` is the number of pages available.
+- `maxPageNumber` is the highest valid `page` value for the current request.
+- `primeCount` is total primes found before pagination.
+- `pagePrimeCount` is the number of primes returned in the current page.
+
+Example request:
+
+```http
+GET /api/primes?upTo=100&algorithm=auto&page=1&size=10
+```
+
+Example response (truncated):
+
+```json
+{
+  "upTo": 100,
+  "source": "COMPUTED",
+  "primeCount": 25,
+  "pagePrimeCount": 10,
+  "page": 1,
+  "size": 10,
+  "totalPages": 3,
+  "maxPageNumber": 3,
+  "hasNext": true,
+  "primes": [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+}
+```
+
+Out-of-range page example:
+
+```http
+GET /api/primes?upTo=100&algorithm=auto&page=9&size=10
+```
+
+```json
+{
+  "timestamp": "2026-05-11T14:30:00+01:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Page out of range for this request. Valid page number is 1 to 3",
+  "path": "/api/primes"
+}
+```
 
 ## Validation and Error Handling
 
 - Invalid `upTo` (e.g. 0, negative) returns `400 Bad Request`
 - Unsupported `algorithm` returns `400 Bad Request`
 - Values above 200,000 exceed the full-list cap and return `400 Bad Request`
-- Error responses are handled centrally using GlobalExceptionHandler and returned in a standard ApiError format.
+- Error responses are handled centrally using `GlobalExceptionHandler` and returned in a standard `ApiError` format.
 
 ## Cache Behaviour
 
@@ -77,7 +124,7 @@ If no cache is usable, response source is COMPUTED.
 
 This project includes:
 
-- **Unit tests (JUnit 5)** for core prime logic, algorithm selection, cache behavior, and validation paths.
+- **Unit tests (JUnit 5)** for core prime logic, algorithm selection, cache behaviour, and validation paths.
 - **Integration tests (Karate)** for API endpoint behavior and error responses.
 
 Run all tests with:
@@ -86,7 +133,7 @@ Run all tests with:
 ./mvnw test
 ```
 
-Karate HTML report is generated at target/karate-reports/karate-summary.html
+Karate HTML report is generated at `target/karate-reports/karate-summary.html`
 
 **Test coverage includes:**
 

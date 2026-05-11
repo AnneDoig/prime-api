@@ -14,13 +14,13 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @JacksonXmlRootElement(localName = "PrimeResult")
-@Schema(description = "Prime number computation result with cache metadata")
+@Schema(description = "Prime number computation result with cache and pagination metadata")
 public class PrimeResult {
 
     @Schema(example = "200", description = "Requested upper bound")
     private int upTo;
 
-    @Schema(example = "COMPUTED", description = "Where the response data came from")
+    @Schema(example = "CACHED_EXTENDED (from 100000)", description = "Where the response data came from")
     private String source;
 
     @Schema(example = "auto", description = "Algorithm requested by the caller")
@@ -29,14 +29,32 @@ public class PrimeResult {
     @Schema(example = "sieve", description = "Algorithm actually used to compute the primes")
     private String resolvedAlgorithm;
 
-    @Schema(example = "Sieve of Eratosthenes", description = "Name of the used algorithm")
+    @Schema(example = "auto/sieve", description = "Requested/resolved algorithm display")
     private String algorithmDisplay;
 
-    @Schema(example = "46", description = "How many primes were found")
+    @Schema(example = "46", description = "Total number of primes found before pagination")
     private int primeCount;
+
+    @Schema(example = "10", description = "Number of primes returned in this page")
+    private int pagePrimeCount;
+
+    @Schema(example = "1", description = "Current page number (1-based)")
+    private int page;
+
+    @Schema(example = "100", description = "Requested page size")
+    private int size;
+
+    @Schema(example = "1", description = "Total number of pages available")
+    private int totalPages;
+
+    @Schema(example = "3", description = "Highest valid page number (1-based) for this result")
+    private int maxPageNumber;
+
+    @Schema(example = "false", description = "Whether there is another page after this one")
+    private boolean hasNext;
 
     @JacksonXmlElementWrapper(useWrapping = false)
     @JacksonXmlProperty(localName = "primes")
-    @Schema(description = "Prime numbers up to the requested upper bound")
+    @Schema(description = "Prime numbers for the current page")
     private List<Integer> primes;
 }
