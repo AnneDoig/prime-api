@@ -12,13 +12,27 @@ import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-// Central place to convert exceptions into a consistent API error response.
+/**
+ * Global exception handler for consistent error responses across the API.
+ *
+ * All caught exceptions are converted to a standardized JSON/XML error response with:
+ * - timestamp: when the error occurred
+ * - status: HTTP status code
+ * - error: HTTP status reason phrase
+ * - message: user-friendly error message
+ * - path: request URI that caused the error
+ *
+ * Handles three exception types:
+ * 1. IllegalArgumentException: validation errors from PrimeService logic
+ * 2. ResponseStatusException: business rule violations
+ * 3. MethodArgumentTypeMismatchException: query parameter type conversion failures
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // Handles invalid client input (e.g. negative upTo, bad algorithm values)
+    // Handles validation errors from service layer (e.g. negative upTo, invalid page/size).
     // Invoked by Spring at runtime via @ExceptionHandler (may appear unused in IDE).
-   @ExceptionHandler(IllegalArgumentException.class)
+    @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(
             IllegalArgumentException ex,
             HttpServletRequest request
@@ -29,7 +43,8 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
     }
-    // Handles invalid client input (e.g., negative upTo, bad algorithm values)
+
+    // Handles business rule violations from service layer (e.g. upTo exceeds configured cap).
     // Invoked by Spring at runtime via @ExceptionHandler (may appear unused in IDE).
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleResponseStatus(

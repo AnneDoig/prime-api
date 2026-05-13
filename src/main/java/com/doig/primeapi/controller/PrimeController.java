@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 // REST controller for prime-number endpoints.
+// Delegates computation, algorithm selection, and caching to PrimeService.
+// All error responses use GlobalExceptionHandler for consistent ApiError shape.
 @RestController
 @RequestMapping("/api")
 public class PrimeController {
@@ -19,18 +21,20 @@ public class PrimeController {
     // Business logic lives in the service layer; the controller handles HTTP concerns only.
     private final PrimeService primeService;
 
+    // Constructor injection: ensures PrimeService dependency is mandatory and thread-safe.
     public PrimeController(PrimeService primeService) {
         this.primeService = primeService;
     }
 
-    // Returns a paginated prime list and supports both JSON and XML responses.
+    // Returns a paginated prime list (both JSON and XML) with cache-source metadata.
+    // Caching strategy and algorithm selection delegated to PrimeService.
     @GetMapping(value = "/primes", produces = {
             MediaType.APPLICATION_JSON_VALUE,
             MediaType.APPLICATION_XML_VALUE
     })
     @Operation(
-            summary = "Get primes up to N with pagination",
-            description = "Returns prime numbers up to a given upper bound. Results are paginated to avoid large payloads."
+            summary = "Get prime numbers up to a given number, split into pages",
+            description = "Returns prime numbers from 2 up to the number you provide. Results are split into pages to keep responses small and fast."
     )
     @ApiResponse(
             responseCode = "200",
@@ -51,7 +55,7 @@ public class PrimeController {
     public ResponseEntity<PrimeResult> getPrimes(
             // Upper bound for prime calculation.
             @RequestParam
-            @Schema(example = "100", description = "Must be a positive integer")
+            @Schema(example = "100", description = "The maximum number to check for primes (must be greater than 0)")
             int upTo,
 
             // Requested algorithm, or auto-selection based on input size.
@@ -61,10 +65,10 @@ public class PrimeController {
 
             // 1-based page number for the paginated response.
             @RequestParam(defaultValue = "1")
-            @Schema(example = "1", description = "Page number (1-based). See response field maxPageNumber for the highest valid value.")
+            @Schema(example = "1", description = "Page number (starts at 1). See response field maxPageNumber for the highest valid value.")
             int page,
 
-            // Number of primes to return in the current page.
+            // Number of primes to return in the current page (1..1000).
             @RequestParam(defaultValue = "100")
             @Schema(example = "100", description = "Page size (1..1000)")
             int size

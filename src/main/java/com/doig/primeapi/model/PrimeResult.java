@@ -14,11 +14,21 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @JacksonXmlRootElement(localName = "PrimeResult")
-@Schema(description = "Prime number computation result with cache and pagination metadata")
+@Schema(description = "Prime number results, including cache source and page information")
 public class PrimeResult {
 
+    /**
+     * API response containing prime numbers with cache source, algorithm metadata, and pagination.
+     * Supports both JSON and XML serialization.
+     *
+     * Request metadata: upTo, requested/resolved algorithms
+     * Cache metadata: source (COMPUTED, CACHED_EXACT, CACHED_FILTERED, CACHED_EXTENDED)
+     * Pagination: page, size, primeCount, pagePrimeCount, totalPages, maxPageNumber, hasNext
+     * Result: primes (current page only)
+     */
+
     // Original request upper bound.
-    @Schema(example = "200", description = "Requested upper bound")
+    @Schema(example = "200", description = "Maximum number searched")
     private int upTo;
 
     // Cache/source metadata showing whether the result was computed or reused.
@@ -32,11 +42,11 @@ public class PrimeResult {
     @Schema(example = "sieve", description = "Algorithm actually used to compute the primes")
     private String resolvedAlgorithm;
 
-    @Schema(example = "auto/sieve", description = "Requested/resolved algorithm display")
+    @Schema(example = "auto/sieve", description = "Your algorithm request and what was actually used (e.g. auto/sieve)")
     private String algorithmDisplay;
 
     // Pagination summary for the full result set and the current page.
-    @Schema(example = "46", description = "Total number of primes found before pagination")
+    @Schema(example = "46", description = "Total number of primes found before splitting into pages")
     private int primeCount;
 
     @Schema(example = "10", description = "Number of primes returned in this page")
@@ -45,7 +55,7 @@ public class PrimeResult {
     @Schema(example = "1", description = "Current page number (1-based)")
     private int page;
 
-    @Schema(example = "100", description = "Requested page size")
+    @Schema(example = "100", description = "Number of results requested per page")
     private int size;
 
     @Schema(example = "1", description = "Total number of pages available")

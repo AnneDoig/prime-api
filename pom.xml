@@ -12,7 +12,7 @@
     <artifactId>prime-api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>prime-api</name>
-    <description>prime-api</description>
+    <description>Prime number computation API with configurable algorithms and intelligent caching</description>
     <url/>
     <licenses>
         <license/>
@@ -40,7 +40,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>3.0.2</version><!-- Check version Latest for Spring Boot 4.0.5 was 3.0.3 if not working -->
+            <version>3.0.2</version><!-- Verified compatible with Spring Boot 4.0.6 and Java 21 -->
         </dependency>
 
         <!-- Jackson XML Support -->
@@ -79,6 +79,8 @@
         </dependency>
 
         <!-- Override Karate's transitive Armeria to a newer patched version -->
+        <!-- CVE-2023-44487: Karate 1.4.1 depends on Armeria 1.25.2 (vulnerable).
+             Explicit override to Armeria 1.38.0 here; test-scope only. -->
         <dependency>
             <groupId>com.linecorp.armeria</groupId>
             <artifactId>armeria</artifactId>

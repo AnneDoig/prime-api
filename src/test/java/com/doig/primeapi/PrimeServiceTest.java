@@ -93,6 +93,21 @@ class PrimeServiceTest {
         PrimeResult large = primeService.getPrimesUpTo(200_000, "auto");
         assertEquals("segmented-sieve", large.getResolvedAlgorithm());
     }
+
+    // Auto mode can reuse a larger cached result from another algorithm and filter down.
+    @Test
+    void autoModeReusesCrossAlgorithmCacheWhenAvailable() {
+        primeService.getPrimesUpTo(200_000, "segmented-sieve");
+
+        PrimeResult reused = primeService.getPrimesUpTo(100, "auto");
+
+        assertEquals("segmented-sieve", reused.getResolvedAlgorithm());
+        assertEquals("auto/segmented-sieve", reused.getAlgorithmDisplay());
+        assertTrue(reused.getSource().contains("CACHED_FILTERED"));
+        assertTrue(reused.getSource().contains("cross-algorithm"));
+        assertEquals(25, reused.getPrimeCount());
+    }
+
     // Validation: rejects values above MAX_FULL_RESULT_UP_TO (e.g. 200_000)
     @Test
     void upToTooLarge_throwsResponseStatusException() {

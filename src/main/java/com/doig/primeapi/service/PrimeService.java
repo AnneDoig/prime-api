@@ -14,11 +14,26 @@ import java.util.*;
 @Service
 public class PrimeService {
 
+    /**
+     * Service layer for prime number computation with intelligent caching.
+     *
+     * Supports three algorithms: trial division (small n), sieve (medium n), segmented-sieve (large n).
+     * Auto mode selects the best algorithm based on input size.
+     *
+     * Caching strategy:
+     * - Per-algorithm bounded Caffeine caches (weight-based eviction)
+     * - Intelligent hit detection: exact match, filter-down (ceil), extend-up (floor)
+     * - Cross-algorithm reuse: auto mode searches all caches for best reuse opportunity
+     *
+     * All public methods are synchronized to ensure thread-safe cache updates.
+     */
+
     private static final String ALGO_TRIAL = "trial";
     private static final String ALGO_SIEVE = "sieve";
     private static final String ALGO_SEGMENTED_SIEVE = "segmented-sieve";
     private static final String ALGO_AUTO = "auto";
 
+    // Auto mode algorithm thresholds: trial for n<10K, sieve for 10K≤n<200K, segmented-sieve for n≥200K.
     private static final int AUTO_SIEVE_THRESHOLD = 10_000;
     private static final int AUTO_SEGMENTED_SIEVE_THRESHOLD = 200_000;
 
@@ -38,8 +53,10 @@ public class PrimeService {
     @Value("${prime.cache.ttl:30m}")
     private Duration cacheTtl = Duration.ofMinutes(30);
 
+    // One Caffeine cache per algorithm: enables independent weight/TTL management and cross-algorithm reuse optimization.
     private final Map<String, Cache<Integer, List<Integer>>> cacheByAlgorithm = new HashMap<>();
 
+    // All public methods are synchronized to ensure thread-safe cache updates across multiple algorithms.
     public synchronized PrimeResult getPrimesUpTo(int n) {
         return getPrimesUpTo(n, ALGO_AUTO, DEFAULT_PAGE, DEFAULT_SIZE);
     }
@@ -49,67 +66,80 @@ public class PrimeService {
     }
 
     public synchronized PrimeResult getPrimesUpTo(int n, String algorithm, int page, int size) {
+        // 1. Validate and normalize input
         validateUpperBound(n);
         validatePagination(page, size);
-
+        // 2. Resolve algorithm and get/create cache
         String requestedAlgorithm = normalizeRequestedAlgorithm(algorithm);
         String resolvedAlgorithm = resolveAlgorithm(requestedAlgorithm, n);
-        String algorithmDisplay = requestedAlgorithm.equals(ALGO_AUTO)
-                ? ALGO_AUTO + "/" + resolvedAlgorithm
-                : requestedAlgorithm;
-
         Cache<Integer, List<Integer>> cache =
                 cacheByAlgorithm.computeIfAbsent(resolvedAlgorithm, ignored -> createPrimeCache());
 
         List<Integer> fullResult;
         String source;
+        // 3. Attempt cross-algorithm or per-algorithm cache hit
+        // In auto mode, try reusing cache entries from any algorithm before computing fresh data.
+        CrossAlgorithmHit crossAlgorithmHit = requestedAlgorithm.equals(ALGO_AUTO)
+                ? findCrossAlgorithmCacheHit(n)
+                : null;
 
-        // Exact hit
-        List<Integer> exactHit = cache.getIfPresent(n);
-        if (exactHit != null) {
-            fullResult = exactHit;
-            source = "CACHED_EXACT";
+        if (crossAlgorithmHit != null) {
+            resolvedAlgorithm = crossAlgorithmHit.algorithm();
+            fullResult = crossAlgorithmHit.primes();
+            source = crossAlgorithmHit.source();
         } else {
-            // Reuse larger cached list by filtering down
-            NavigableSet<Integer> cachedSizes = new TreeSet<>(cache.asMap().keySet());
-            Integer ceiling = cachedSizes.ceiling(n);
-            if (ceiling != null) {
-                List<Integer> ceilingResult = cache.getIfPresent(ceiling);
-                if (ceilingResult != null) {
-                    fullResult = ceilingResult.stream()
-                            .filter(p -> p <= n)
-                            .toList();
-                    cache.put(n, fullResult);
-                    source = "CACHED_FILTERED (from " + ceiling + ")";
-                } else {
-                    fullResult = computeAndCache(n, resolvedAlgorithm, cache);
-                    source = "COMPUTED";
-                }
+            // Exact hit
+            List<Integer> exactHit = cache.getIfPresent(n);
+            if (exactHit != null) {
+                fullResult = exactHit;
+                source = "CACHED_EXACT";
             } else {
-                // Reuse smaller cached list and extend
-                Integer floor = cachedSizes.floor(n);
-                if (floor != null) {
-                    List<Integer> floorResult = cache.getIfPresent(floor);
-                    if (floorResult != null) {
-                        fullResult = new ArrayList<>(floorResult);
-                        for (int i = floor + 1; i <= n; i++) {
-                            if (isPrime(i)) {
-                                fullResult.add(i);
-                            }
-                        }
+                // Reuse larger cached list by filtering down
+                NavigableSet<Integer> cachedSizes = new TreeSet<>(cache.asMap().keySet());
+                Integer ceiling = cachedSizes.ceiling(n);
+                if (ceiling != null) {
+                    List<Integer> ceilingResult = cache.getIfPresent(ceiling);
+                    if (ceilingResult != null) {
+                        fullResult = ceilingResult.stream()
+                                .filter(p -> p <= n)
+                                .toList();
                         cache.put(n, fullResult);
-                        source = "CACHED_EXTENDED (from " + floor + ")";
+                        source = "CACHED_FILTERED (from " + ceiling + ")";
                     } else {
                         fullResult = computeAndCache(n, resolvedAlgorithm, cache);
                         source = "COMPUTED";
                     }
                 } else {
-                    fullResult = computeAndCache(n, resolvedAlgorithm, cache);
-                    source = "COMPUTED";
+                    // Reuse smaller cached list and extend
+                    Integer floor = cachedSizes.floor(n);
+                    if (floor != null) {
+                        List<Integer> floorResult = cache.getIfPresent(floor);
+                        if (floorResult != null) {
+                            fullResult = new ArrayList<>(floorResult);
+                            for (int i = floor + 1; i <= n; i++) {
+                                if (isPrime(i)) {
+                                    fullResult.add(i);
+                                }
+                            }
+                            cache.put(n, fullResult);
+                            source = "CACHED_EXTENDED (from " + floor + ")";
+                        } else {
+                            fullResult = computeAndCache(n, resolvedAlgorithm, cache);
+                            source = "COMPUTED";
+                        }
+                    } else {
+                        fullResult = computeAndCache(n, resolvedAlgorithm, cache);
+                        source = "COMPUTED";
+                    }
                 }
             }
         }
 
+        String algorithmDisplay = requestedAlgorithm.equals(ALGO_AUTO)
+                ? ALGO_AUTO + "/" + resolvedAlgorithm
+                : requestedAlgorithm;
+
+        // 4. Construct pagination metadata and return
         int totalPrimes = fullResult.size();
 
         int totalPages = Math.max((int) Math.ceil((double) totalPrimes / size), 1);
@@ -148,6 +178,58 @@ public class PrimeService {
                 pagedPrimes
         );
     }
+
+    private CrossAlgorithmHit findCrossAlgorithmCacheHit(int n) {
+        Integer bestCeiling = null;
+        String bestCeilingAlgorithm = null;
+        Cache<Integer, List<Integer>> bestCeilingCache = null;
+        List<Integer> bestCeilingResult = null;
+
+        for (Map.Entry<String, Cache<Integer, List<Integer>>> entry : cacheByAlgorithm.entrySet()) {
+            String algorithm = entry.getKey();
+            Cache<Integer, List<Integer>> cache = entry.getValue();
+
+            List<Integer> exactHit = cache.getIfPresent(n);
+            if (exactHit != null) {
+                return new CrossAlgorithmHit(
+                        algorithm,
+                        exactHit,
+                        "CACHED_EXACT (cross-algorithm: " + algorithm + ")"
+                );
+            }
+
+            NavigableSet<Integer> cachedSizes = new TreeSet<>(cache.asMap().keySet());
+            Integer ceiling = cachedSizes.ceiling(n);
+            if (ceiling == null || (bestCeiling != null && ceiling >= bestCeiling)) {
+                continue;
+            }
+
+            List<Integer> ceilingResult = cache.getIfPresent(ceiling);
+            if (ceilingResult != null) {
+                bestCeiling = ceiling;
+                bestCeilingAlgorithm = algorithm;
+                bestCeilingCache = cache;
+                bestCeilingResult = ceilingResult;
+            }
+        }
+
+        if (bestCeiling == null || bestCeilingAlgorithm == null || bestCeilingCache == null || bestCeilingResult == null) {
+            return null;
+        }
+
+        List<Integer> filtered = bestCeilingResult.stream()
+                .filter(p -> p <= n)
+                .toList();
+        bestCeilingCache.put(n, filtered);
+
+        return new CrossAlgorithmHit(
+                bestCeilingAlgorithm,
+                filtered,
+                "CACHED_FILTERED (from " + bestCeiling + ", cross-algorithm: " + bestCeilingAlgorithm + ")"
+        );
+    }
+
+    private record CrossAlgorithmHit(String algorithm, List<Integer> primes, String source) {}
 
     private void validateUpperBound(int n) {
         if (n <= 0) {
