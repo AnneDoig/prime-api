@@ -172,9 +172,20 @@ Karate HTML report is generated at `target/karate-reports/karate-summary.html`
 - Max-limit validation (ResponseStatusException path)
 
 
-## Deploy to Render
+## Live Demo (Optional)
 
-This project includes a `Dockerfile` and is ready to deploy on [Render](https://render.com).
+Try the API without deploying — a live instance is available at:
+
+```
+https://prime-api-service.onrender.com/api/primes?upTo=30&algorithm=auto
+https://prime-api-service.onrender.com/swagger-ui.html
+```
+
+> **Note:** As above, accessing the API directly in a browser will return XML due to the browser's `Accept` header. Use the Swagger UI to easily test with JSON, or add a custom `Accept: application/json` header in your requests.
+
+## Deploy Your Own (Optional)
+
+Prefer to run the app on your own instance? This project includes a `Dockerfile` and is ready to deploy on [Render](https://render.com).
 
 1. Push your branch to GitHub
 2. In Render, create a new **Web Service** and connect your GitHub repository
@@ -192,12 +203,6 @@ https://<your-app>.onrender.com/swagger-ui.html
 ```
 
 > **Note:** Render free-tier services spin down after inactivity. The first request after a cold start may take 30–60 seconds.
-
-## Live Demo
-```
-https://prime-api-service.onrender.com
-https://prime-api-service.onrender.com/swagger-ui.html
-```
 
 ## Run Locally
 
@@ -228,11 +233,22 @@ Run directly without building a JAR first:
 
 ### Verify response format
 
+The API supports both JSON and XML based on the `Accept` header. **Note:** Web browsers (Chrome, Safari, Firefox) send an `Accept: text/html, application/xhtml+xml, ...` header by default, which causes the API to return XML. This is content negotiation working as designed.
+
+To verify both formats:
+
 ```bash
+# Default (XML in browser due to Accept header)
 curl -i "http://localhost:8080/api/primes?upTo=30&algorithm=auto"
+
+# Explicitly request JSON
 curl -i -H "Accept: application/json" "http://localhost:8080/api/primes?upTo=30&algorithm=auto"
+
+# Explicitly request XML
 curl -i -H "Accept: application/xml" "http://localhost:8080/api/primes?upTo=30&algorithm=auto"
 ```
+
+Or test directly in the browser by adding the `-H` header equivalent via Swagger UI (`/swagger-ui.html`) or by using the live demo below.
 
 ## Caffeine Cache Implementation
 
