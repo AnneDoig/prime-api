@@ -45,6 +45,21 @@ class PrimeServiceTest {
         assertEquals(8, secondCall.getPrimeCount());
     }
 
+    // Cache clear: explicit clear should force recompute on next request.
+    @Test
+    void clearAllCaches_forcesRecomputeAfterClear() {
+        primeService.getPrimesUpTo(100, "sieve");
+        PrimeResult cached = primeService.getPrimesUpTo(100, "sieve");
+        assertEquals("CACHED_EXACT", cached.getSource());
+
+        PrimeService.CacheClearResult clearResult = primeService.clearAllCaches();
+        assertTrue(clearResult.clearedAlgorithms() >= 1);
+        assertTrue(clearResult.clearedEntries() >= 1);
+
+        PrimeResult afterClear = primeService.getPrimesUpTo(100, "sieve");
+        assertEquals("COMPUTED", afterClear.getSource());
+    }
+
     // Cache behaviour: smaller request filters larger cached result
     @Test
     void getPrimesUpTo20ThenUpTo15_upTo15UsesCachedFiltered() {

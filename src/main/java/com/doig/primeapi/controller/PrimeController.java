@@ -11,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 // REST controller for prime-number endpoints.
 // Delegates computation, algorithm selection, and caching to PrimeService.
 // All error responses use GlobalExceptionHandler for consistent ApiError shape.
@@ -75,5 +77,16 @@ public class PrimeController {
     ) {
         // No local try/catch: GlobalExceptionHandler keeps ApiError response shape consistent.
         return ResponseEntity.ok(primeService.getPrimesUpTo(upTo, algorithm, page, size));
+    }
+
+    // Clears all in-memory prime caches across algorithms.
+    @PostMapping(value = "/cache/clear", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> clearCache() {
+        PrimeService.CacheClearResult result = primeService.clearAllCaches();
+        return ResponseEntity.ok(Map.of(
+                "message", "Cache cleared",
+                "clearedAlgorithms", result.clearedAlgorithms(),
+                "clearedEntries", result.clearedEntries()
+        ));
     }
 }

@@ -179,6 +179,20 @@ public class PrimeService {
         );
     }
 
+    // Utility for debugging and operational checks (e.g. fresh cache validation after deploy).
+    public synchronized CacheClearResult clearAllCaches() {
+        int clearedAlgorithms = 0;
+        int clearedEntries = 0;
+
+        for (Cache<Integer, List<Integer>> cache : cacheByAlgorithm.values()) {
+            clearedAlgorithms++;
+            clearedEntries += cache.asMap().size();
+            cache.invalidateAll();
+        }
+
+        return new CacheClearResult(clearedAlgorithms, clearedEntries);
+    }
+
     private CrossAlgorithmHit findCrossAlgorithmCacheHit(int n) {
         Integer bestCeiling = null;
         String bestCeilingAlgorithm = null;
@@ -230,6 +244,8 @@ public class PrimeService {
     }
 
     private record CrossAlgorithmHit(String algorithm, List<Integer> primes, String source) {}
+
+    public record CacheClearResult(int clearedAlgorithms, int clearedEntries) {}
 
     private void validateUpperBound(int n) {
         if (n <= 0) {

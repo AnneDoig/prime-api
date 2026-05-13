@@ -111,6 +111,27 @@ In `auto` mode, results cached by any algorithm can be reused across algorithm b
 
 If no cache is usable, response source is `COMPUTED`.
 
+> **Design note:** `auto` is intentionally designed to prefer the best algorithm for the requested range, then reuse cached data only when it can safely do 
+> so (exact hit or filtering from a larger cached result). It does not try to extend a smaller cache across algorithms, so some larger follow-up requests may still be computed on their first run.
+
+### Clear Cache (dev/debug)
+
+To reset in-memory caches without restarting the service:
+
+```http
+POST /api/cache/clear
+```
+
+Example response:
+
+```json
+{
+  "message": "Cache cleared",
+  "clearedAlgorithms": 3,
+  "clearedEntries": 12
+}
+```
+
 ## Why There Is an Upper Limit
 
 - Very large prime lists can be expensive to serialize (a request to upTo=3M produces ~1-2 MB of JSON).
@@ -124,6 +145,8 @@ If no cache is usable, response source is `COMPUTED`.
 - **Redis distributed cache** — for horizontally scaled deployments needing shared cache state across multiple instances.
 
 - **Request audit logging** — persist request history (upTo, algorithm, source, timestamp) for analytics and observability.
+
+- **Cross-algorithm upward cache reuse** — allow `auto` to extend from smaller cached results across algorithms, not just filter from larger cached results.
 
 ## Testing
 
@@ -157,7 +180,7 @@ This project includes a `Dockerfile` and is ready to deploy on [Render](https://
 2. In Render, create a new **Web Service** and connect your GitHub repository
 3. Set the following:
    - **Environment**: `Docker`
-   - **Branch**: your target branch (e.g. `main` or `experiment-caffeine`)
+   - **Branch**: your target branch (prime-api-final)
    - **Port**: Render sets the `PORT` environment variable automatically — the app reads `${PORT:8080}` and uses it
 4. Deploy
 
@@ -171,8 +194,10 @@ https://<your-app>.onrender.com/swagger-ui.html
 > **Note:** Render free-tier services spin down after inactivity. The first request after a cold start may take 30–60 seconds.
 
 ## Live Demo
-
-> Live demo will be updated here once redeployed to Render with the latest version.
+```
+https://prime-api-service.onrender.com
+https://prime-api-service.onrender.com/swagger-ui.html
+```
 
 ## Run Locally
 

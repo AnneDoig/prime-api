@@ -92,3 +92,31 @@ Feature: Prime API integration tests
     And match response.status == 400
     And match response.message contains "Invalid value for parameter 'upTo'"
 
+  Scenario: cache clear endpoint resets in-memory cache
+    Given path '/api/primes'
+    And param upTo = 101
+    And param algorithm = 'sieve'
+    When method GET
+    Then status 200
+
+    Given path '/api/primes'
+    And param upTo = 101
+    And param algorithm = 'sieve'
+    When method GET
+    Then status 200
+    And match response.source == 'CACHED_EXACT'
+
+    Given path '/api/cache/clear'
+    When method POST
+    Then status 200
+    And match response.message == 'Cache cleared'
+    And assert response.clearedAlgorithms >= 1
+    And assert response.clearedEntries >= 1
+
+    Given path '/api/primes'
+    And param upTo = 101
+    And param algorithm = 'sieve'
+    When method GET
+    Then status 200
+    And match response.source == 'COMPUTED'
+
