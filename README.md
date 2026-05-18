@@ -4,7 +4,7 @@
 
 A Spring Boot REST API that computes prime numbers up to a given number, with algorithm selection, intelligent caching, and content negotiation for JSON and XML responses.
 
-## Live Demo (Start Here)
+## Live Demo 
 
 Try the running app first:
 
